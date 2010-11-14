@@ -156,6 +156,19 @@ class RegexURLPattern(object):
 
             return ResolverMatch(self.callback, args, kwargs, self.name)
 
+    def _get_possibilities(self):
+        """
+        Returns a list of possible regexp matches for this pattern.
+        
+        This method is intended as a stopgap until the URL resolution system is
+        completely revamped. Hence it is marked private, even though it will be
+        used outside this class.
+        
+        It will be made redundant by a new reverse method in the revamped
+        system.
+        """
+        return normalize(self.regex.pattern)
+
     def _get_callback(self):
         if self._callback is not None:
             return self._callback
@@ -215,7 +228,10 @@ class RegexURLResolver(object):
                     for app_name, namespace_list in pattern.app_dict.items():
                         apps.setdefault(app_name, []).extend(namespace_list)
             else:
-                bits = normalize(p_pattern)
+                if hasattr(pattern, '_get_possibilities'):
+                    bits = pattern._get_possibilities()
+                else:
+                    bits = normalize(p_pattern)
                 lookups.appendlist(pattern.callback, (bits, p_pattern))
                 if pattern.name is not None:
                     lookups.appendlist(pattern.name, (bits, p_pattern))
