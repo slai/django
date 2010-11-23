@@ -163,9 +163,6 @@ class RegexURLPattern(object):
         This method is intended as a stopgap until the URL resolution system is
         completely revamped. Hence it is marked private, even though it will be
         used outside this class.
-        
-        It will be made redundant by a new reverse method in the revamped
-        system.
         """
         return normalize(self.regex.pattern)
 
