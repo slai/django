@@ -30,7 +30,7 @@ provided, along with a completely generic view base class that can be
 used as the basis for reusable applications that can be easily
 extended.
 
-See :doc:`the documentation on Generic Views</topics/generic-views>`
+See :doc:`the documentation on Class-based Generic Views</topics/class-based-views>`
 for more details. There is also a document to help you :doc:`convert
 your function-based generic views to class-based
 views</topics/generic-views-migration>`.
@@ -59,7 +59,7 @@ In previous versions of Django, it was common to place static assets in
 app is to make it easier to keep static files separate from user-uploaded
 files. For this reason, you will probably want to make your
 :setting:`MEDIA_ROOT` and :setting:`MEDIA_URL` different from your
-:setting:`STATICFILES_ROOT` and :setting:`STATICFILES_URL`. You will need to
+:setting:`STATIC_ROOT` and :setting:`STATIC_URL`. You will need to
 arrange for serving of files in :setting:`MEDIA_ROOT` yourself;
 ``staticfiles`` does not deal with user-uploaded media at all.
 
@@ -121,13 +121,17 @@ value, protect, or do nothing.
 For more information, see the :attr:`~django.db.models.ForeignKey.on_delete`
 documentation.
 
-Contextual markers in translatable strings
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Contextual markers and comments for translatable strings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For translation strings with ambiguous meaning, you can now
 use the ``pgettext`` function to specify the context of the string.
 
-For more information, see :ref:`contextual-markers`
+And if you just want to add some information for translators, you
+can also add special translator comments in the source.
+
+For more information, see :ref:`contextual-markers` and
+:ref:`translator-comments`.
 
 Everything else
 ~~~~~~~~~~~~~~~
@@ -151,6 +155,11 @@ requests. These include:
       :meth:`~django.test.client.Client.assertNumQueries` -- making it
       easier to test the database activity associated with a view.
 
+    * :ref:`Versioning <cache_versioning>`, :ref:`site-wide prefixing
+      <cache_key_prefixing>` and :ref:`transformation
+      <cache_key_transformation>` has been added to the cache API.
+
+    * Support for lookups spanning relations in admin's ``list_filter``.
 
 .. _backwards-incompatible-changes-1.3:
 
@@ -259,6 +268,36 @@ local flavors:
       has been removed from the province list in favor of the new
       official designation "Aceh (ACE)".
 
+FormSet updates
+~~~~~~~~~~~~~~~
+
+In Django 1.3 ``FormSet`` creation behavior is modified slightly. Historically
+the class didn't make a distinction between not being passed data and being
+passed empty dictionary. This was inconsistent with behavior in other parts of
+the framework. Starting with 1.3 if you pass in empty dictionary the
+``FormSet`` will raise a ``ValidationError``.
+
+For example with a ``FormSet``::
+
+    >>> class ArticleForm(Form):
+    ...     title = CharField()
+    ...     pub_date = DateField()
+    >>> ArticleFormSet = formset_factory(ArticleForm)
+
+the following code will raise a ``ValidationError``::
+
+    >>> ArticleFormSet({})
+    Traceback (most recent call last):
+    ...
+    ValidationError: [u'ManagementForm data is missing or has been tampered with']
+
+if you need to instantiate an empty ``FormSet``, don't pass in the data or use
+``None``::
+
+    >>> formset = ArticleFormSet()
+    >>> formset = ArticleFormSet(data=None)
+
+
 
 .. _deprecated-features-1.3:
 
@@ -284,7 +323,7 @@ be removed entirely.
 
     For more details, see the documentation :doc:`Django's release process
     </internals/release-process>` and our :doc:`deprecation timeline
-    </internals/deprecation>`.`
+    </internals/deprecation>`.
 
 ``mod_python`` support
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -295,9 +334,12 @@ of active projects in its version control repositories, and its lead developer
 has shifted all of his efforts toward the lighter, slimmer, more stable, and
 more flexible ``mod_wsgi`` backend.
 
-If you are currently using the ``mod_python`` request handler, it is strongly
-encouraged you redeploy your Django instances using :doc:`mod_wsgi
-</howto/deployment/modwsgi>`.
+If you are currently using the ``mod_python`` request handler, you
+should redeploy your Django projects using another request handler.
+:doc:`mod_wsgi </howto/deployment/modwsgi>` is the request handler
+recommended by the Django project, but :doc:`FastCGI
+</howto/deployment/fastcgi>` is also supported. Support for
+``mod_python`` deployment will be removed in Django 1.5.
 
 Function-based generic views
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -337,3 +379,44 @@ and Ctrl-C test termination) have been made redundant. In view of this
 redundancy, :class:`~django.test.simple.DjangoTestRunner` has been
 turned into an empty placeholder class, and will be removed entirely
 in Django 1.5.
+
+Changes to :ttag:`url` and :ttag:`ssi`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Most template tags will allow you to pass in either constants or
+variables as arguments -- for example::
+
+    {% extends "base.html" %}
+
+allows you to specify a base template as a constant, but if you have a
+context variable ``templ`` that contains the value ``base.html``::
+
+    {% extends templ %}
+
+is also legal.
+
+However, due to an accident of history, the :ttag:`url` and
+:ttag:`ssi` are different. These tags use the second, quoteless
+syntax, but interpret the argument as a constant. This means it isn't
+possible to use a context variable as the target of a :ttag:`url` and
+:ttag:`ssi` tag.
+
+Django 1.3 marks the start of the process to correct this historical
+accident. Django 1.3 adds a new template library -- ``future`` -- that
+provides alternate implementations of the :ttag:`url` and :ttag:`ssi`
+template tags. This ``future`` library implement behavior that makes
+the handling of the first argument consistent with the handling of all
+other variables. So, an existing template that contains::
+
+    {% url sample %}
+
+should be replaced with::
+
+    {% load url from future %}
+    {% url 'sample' %}
+
+The tags implementing the old behavior have been deprecated, and in
+Django 1.5, the old behavior will be replaced with the new behavior.
+To ensure compatibility with future versions of Django, existing
+templates should be modified to use the new ``future`` libraries and
+syntax.

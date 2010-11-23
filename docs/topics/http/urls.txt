@@ -809,7 +809,7 @@ This ``current_app`` argument is used as a hint to resolve application
 namespaces into URLs on specific application instances, according to the
 :ref:`namespaced URL resolution strategy <topics-http-reversing-url-namespaces>`.
 
-.. admonition:: Make sure your views are all correct
+.. admonition:: Make sure your views are all correct.
 
     As part of working out which URL names map to which patterns, the
     ``reverse()`` function has to import all of your URLconf files and examine
@@ -836,6 +836,9 @@ following signature:
 worry about the ``urlconf`` parameter. The function returns a
 :class:`django.core.urlresolvers.ResolverMatch` object that allows you
 to access various meta-data about the resolved URL.
+
+If the URL does not resolve, the function raises an
+:class:`~django.http.Http404` exception.
 
 .. class:: ResolverMatch()
 
